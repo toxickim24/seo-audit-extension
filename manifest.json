@@ -1,11 +1,11 @@
 {
   "manifest_version": 3,
-  "name": "My First Extension",
-  "description": "This is a simple Chrome extension!",
+  "name": "SEO Extension",
+  "description": "Web Design Davao - SEO Extension",
   "version": "1.0",
   "action": {
-    "default_popup": "popup.html",
+    "default_popup": "seo-extension.html",
     "default_icon": "icon.png"
   },
-  "permissions": ["storage", "activeTab", "scripting"]
+  "permissions": ["scripting", "activeTab"]
 }
