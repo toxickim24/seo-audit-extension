@@ -63,7 +63,7 @@ seo-audit-tool/
 
 1. Clone this repo:
    ```bash
-   git clone https://github.com/your-org/seo-audit-tool.git
+   git clone git@github.com:toxickim24/seo-audit-extension.git
    ```
 2. Install dependencies (PHP & JS libraries).
 3. Configure `config/app.env` with:
