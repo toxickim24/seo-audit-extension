@@ -1,0 +1,9 @@
+.speed-card {
+  background: #fff;
+  border-radius: 10px;
+  padding: 16px;
+  margin-top: 16px;
+  box-shadow: 0 4px 8px rgba(0,0,0,0.08);
+  font-family: Arial, sans-serif;
+}
+.speed-card h4 { margin: 0 0 6px; color: #2E86DE; }
