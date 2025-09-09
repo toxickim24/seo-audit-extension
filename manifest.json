@@ -1,11 +1,11 @@
 {
   "manifest_version": 3,
-  "name": "SEO Extension",
+  "name": "SEOMojo",
   "description": "Web Design Davao - SEO Extension",
   "version": "1.0",
   "action": {
     "default_popup": "seo-extension.html",
-    "default_icon": "icon.png"
+    "default_icon": "seo-logo.png"
   },
   "permissions": ["scripting", "activeTab"]
 }
