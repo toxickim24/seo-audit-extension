@@ -1,4 +1,4 @@
-// js/seo-speed.js — diagnostic version
+// js/seo-speed.js — auto scan on load
 
 const PSI_API_KEY = (() => {
   try { return String(chrome.runtime.getManifest().google_speed_api || "").trim(); }
@@ -92,7 +92,6 @@ async function fetchWithTimeoutJSON(url, timeoutMs=30000){
     const res = await fetch(url, { signal: ctrl.signal });
     const body = await res.text();
     if (!res.ok) throw new Error(`HTTP ${res.status} ${res.statusText}\n${body}`);
-    // PSI sometimes returns empty bodies on edge errors; guard parse
     try { return JSON.parse(body); }
     catch (e) { throw new Error(`Invalid JSON\n${body.slice(0,800)}`); }
   } catch (e) {
@@ -103,7 +102,6 @@ async function fetchWithTimeoutJSON(url, timeoutMs=30000){
 
 async function runStrategy(url, strategy){
   const ep = endpoint(url, strategy);
-  // show per-strategy endpoint link too
   appendHtml(`
     <div class="speed-card" style="background:#f8fafc;">
       <div style="font-size:13px;opacity:.8"><strong>Request (${esc(strategy)}):</strong>
@@ -131,7 +129,7 @@ async function run(){
     renderCard("desktop", desktop);
   } catch (e) {
     errorCard("Desktop audit failed", e.message);
-    return; // stop here; don’t attempt mobile if desktop failed
+    return;
   }
 
   try {
@@ -142,16 +140,8 @@ async function run(){
   }
 }
 
-document.addEventListener("DOMContentLoaded", () => {
-  const btn = document.getElementById("scanBtn");
-  if (!btn) return errorCard("Google PageSpeed", "Scan button #scanBtn not found.");
-  btn.addEventListener("click", async () => {
-    const label = btn.textContent;
-    btn.textContent = "Scanning…";
-    btn.disabled = true;
-    setHtml("");
-    await run();
-    btn.textContent = label;
-    btn.disabled = false;
-  });
+// Run automatically when popup loads
+document.addEventListener("DOMContentLoaded", async () => {
+  setHtml("<p>⏳ Starting automatic scan…</p>");
+  await run();
 });
