@@ -7,7 +7,10 @@
     "default_popup": "seo-extension.html",
     "default_icon": "img/seo-logo.png"
   },
-  "permissions": ["activeTab", "tabs", "scripting"],
+   "background": {
+    "service_worker": "background.js"
+  },
+  "permissions": ["activeTab", "tabs", "scripting","storage"],
   "host_permissions": ["https://www.googleapis.com/*"],
   "google_speed_api": "AIzaSyAZCIYhuH59SFasuRg9osspJIAz5K3IwyU"
 }

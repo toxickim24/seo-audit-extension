@@ -1,147 +1,97 @@
-// js/seo-speed.js — auto scan on load
-
-const PSI_API_KEY = (() => {
-  try { return String(chrome.runtime.getManifest().google_speed_api || "").trim(); }
-  catch { return ""; }
-})();
-
 const $speed = () => document.getElementById("speed-results");
-const esc = s => String(s ?? "").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
-
-function setHtml(html){ const el=$speed(); if(!el) return console.error("#speed-results not found"); el.innerHTML=html; }
-function appendHtml(html){ const el=$speed(); if(!el) return console.error("#speed-results not found"); el.insertAdjacentHTML("beforeend", html); }
-
-function endpoint(url, strategy="desktop"){
-  const base = "https://www.googleapis.com/pagespeedonline/v5/runPagespeed";
-  const qs = new URLSearchParams({ url, strategy });
-  if (PSI_API_KEY) qs.set("key", PSI_API_KEY);
-  return `${base}?${qs.toString()}`;
-}
-
-function loading(url, ep){
-  setHtml(`
-    <div class="speed-card">
-      <h4>⚡ Google PageSpeed</h4>
-      <p>Scanning: <code>${esc(url)}</code></p>
-      <p>⏳ Running audit…</p>
-      <details style="margin-top:8px;">
-        <summary>Request details</summary>
-        <p><strong>Endpoint (desktop):</strong><br><code style="word-break:break-all">${esc(ep)}</code></p>
-        <p><a href="${ep}" target="_blank" rel="noopener">Open in new tab</a></p>
-        <p style="opacity:.8">API key present: ${PSI_API_KEY ? "yes" : "no"}</p>
-      </details>
-    </div>
-  `);
-}
+function setHtml(html){ if ($speed()) $speed().innerHTML = html; }
 
 function pill(n){
-  if(n==null||Number.isNaN(n)) return "N/A";
-  const v=Math.round(n), c=v>=90?"#16a34a":v>=50?"#f59e0b":"#dc2626";
-  return `<span style="display:inline-block;padding:2px 8px;border-radius:999px;background:${c};color:#fff;">${v}/100</span>`;
+  if(n==null || Number.isNaN(n)) return "N/A";
+  const v = Math.round(n);
+  const c = v>=90 ? "#16a34a" : v>=50 ? "#f59e0b" : "#dc2626";
+  return `<span style="padding:2px 6px;border-radius:6px;background:${c};color:#fff;">${v}</span>`;
 }
 
-function errorCard(title, msg, details=""){
-  appendHtml(`
-    <div class="speed-card">
-      <h4>⚡ ${esc(title)}</h4>
-      <p style="color:#c0392b;"><strong>❌ Error:</strong> ${esc(msg)}</p>
-      ${details ? `<details style="margin-top:8px;"><summary>Details</summary><pre style="white-space:pre-wrap">${esc(details)}</pre></details>` : ""}
-    </div>
-  `);
+function renderCard(title, data){
+  if (!data) {
+    return `<div class="speed-card"><h4>⚡ ${title}</h4><p style="color:red;">❌ No data available</p></div>`;
+  }
+  return `<div class="speed-card">
+    <h4>⚡ ${title}</h4>
+    <p><strong>Performance:</strong> ${pill(data.performanceScore)}</p>
+    <ul style="list-style:none;padding:0;margin:0;">
+      <li>FCP: ${data.fcp || "N/A"}</li>
+      <li>LCP: ${data.lcp || "N/A"}</li>
+      <li>CLS: ${data.cls || "N/A"}</li>
+      <li>TBT: ${data.tbt || "N/A"}</li>
+    </ul>
+  </div>`;
 }
 
-function renderCard(strategy, lh){
-  appendHtml(`
-    <div class="speed-card">
-      <h4>⚡ ${strategy.toUpperCase()} Results</h4>
-      <p><strong>Performance:</strong> ${pill(lh.performanceScore)}</p>
-      <ul style="list-style:none;padding:0;margin:0;">
-        <li><strong>FCP:</strong> ${esc(lh.fcp)}</li>
-        <li><strong>LCP:</strong> ${esc(lh.lcp)}</li>
-        <li><strong>CLS:</strong> ${esc(lh.cls)}</li>
-        <li><strong>TBT:</strong> ${esc(lh.tbt)}</li>
-      </ul>
-      <p style="margin-top:10px;font-size:12px;opacity:.75">Source: ${PSI_API_KEY ? "PageSpeed API (key)" : "PageSpeed API (no key)"}</p>
-    </div>
-  `);
-}
-
-async function getActiveTabUrl(){
-  const [tab] = await chrome.tabs.query({ active:true, currentWindow:true });
-  return tab?.url || "";
-}
-
-function parseLH(json){
-  const lh = json?.lighthouseResult;
-  if (!lh) throw new Error("No lighthouseResult in response.");
-  const score = lh.categories?.performance?.score ?? null;
-  const get = k => lh.audits?.[k]?.displayValue ?? "N/A";
-  return {
-    performanceScore: score!=null ? Math.round(score*100) : null,
-    fcp: get("first-contentful-paint"),
-    lcp: get("largest-contentful-paint"),
-    cls: get("cumulative-layout-shift"),
-    tbt: get("total-blocking-time"),
-  };
-}
-
-async function fetchWithTimeoutJSON(url, timeoutMs=30000){
-  const ctrl = new AbortController();
-  const timer = setTimeout(()=>ctrl.abort(), timeoutMs);
-  try {
-    const res = await fetch(url, { signal: ctrl.signal });
-    const body = await res.text();
-    if (!res.ok) throw new Error(`HTTP ${res.status} ${res.statusText}\n${body}`);
-    try { return JSON.parse(body); }
-    catch (e) { throw new Error(`Invalid JSON\n${body.slice(0,800)}`); }
-  } catch (e) {
-    if (e.name === "AbortError") throw new Error("TIMEOUT: request exceeded 30s.");
-    throw e;
-  } finally { clearTimeout(timer); }
-}
-
-async function runStrategy(url, strategy){
-  const ep = endpoint(url, strategy);
-  appendHtml(`
-    <div class="speed-card" style="background:#f8fafc;">
-      <div style="font-size:13px;opacity:.8"><strong>Request (${esc(strategy)}):</strong>
-        <a href="${ep}" target="_blank" rel="noopener">Open in new tab</a>
-      </div>
-    </div>
-  `);
-  const data = await fetchWithTimeoutJSON(ep, 30000);
-  return parseLH(data);
-}
-
-async function run(){
-  const url = await getActiveTabUrl();
-  if (!/^https?:\/\//i.test(url)) {
-    setHtml("");
-    errorCard("Google PageSpeed", "Active tab is not an http(s) page.", `Got URL: ${url || "(empty)"}`);
+function renderResults(audit){
+  if (!audit) {
+    setHtml("<p>⚠️ No audit results available yet.</p>");
     return;
   }
+  const last = new Date(audit.timestamp).toLocaleString();
 
-  const epDesk = endpoint(url, "desktop");
-  loading(url, epDesk);
+  setHtml(`
+    <div class="speed-card">
+      <h4>⚡ PageSpeed Audit</h4>
+      <p><code>${audit.url}</code></p>
+      <p style="font-size:12px;opacity:.75;">Last scanned: ${last}</p>
+      ${renderCard("Desktop", audit.desktop)}
+      ${renderCard("Mobile", audit.mobile)}
+      <button id="refreshAudit" style="
+        margin-top:10px;
+        padding:6px 12px;
+        border:none;
+        border-radius:6px;
+        background:#2E86DE;
+        color:#fff;
+        cursor:pointer;
+      ">🔄 Refresh Audit</button>
+    </div>
+  `);
 
-  try {
-    const desktop = await runStrategy(url, "desktop");
-    renderCard("desktop", desktop);
-  } catch (e) {
-    errorCard("Desktop audit failed", e.message);
-    return;
-  }
+  // ✅ re-bind refresh button every render
+  const btn = document.getElementById("refreshAudit");
+  if (btn) {
+    btn.addEventListener("click", () => {
+      // disable while running
+      btn.textContent = "⏳ Refreshing…";
+      btn.disabled = true;
 
-  try {
-    const mobile = await runStrategy(url, "mobile");
-    renderCard("mobile", mobile);
-  } catch (e) {
-    errorCard("Mobile audit failed", e.message);
+      chrome.runtime.sendMessage({ type: "RUN_PAGESPEED", url: audit.url }, (response) => {
+        if (response.success) {
+          renderResults(response.result);
+        } else {
+          setHtml(`<p style="color:red;">❌ Audit failed: ${response.error}</p>`);
+        }
+      });
+    });
   }
 }
 
-// Run automatically when popup loads
-document.addEventListener("DOMContentLoaded", async () => {
-  setHtml("<p>⏳ Starting automatic scan…</p>");
-  await run();
+// 🚀 Load per-domain results on popup open
+document.addEventListener("DOMContentLoaded", () => {
+  setHtml("<p>⏳ Loading latest audit…</p>");
+  chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+    if (!tabs || !tabs[0]?.url) {
+      setHtml("<p style='color:red;'>❌ Could not detect active tab.</p>");
+      return;
+    }
+    const origin = new URL(tabs[0].url).origin;
+
+    chrome.storage.local.get("audits", (data) => {
+      const audits = data.audits || {};
+      if (audits[origin]) {
+        renderResults(audits[origin]);
+      } else {
+        chrome.runtime.sendMessage({ type: "RUN_PAGESPEED", url: origin }, (response) => {
+          if (response.success) {
+            renderResults(response.result);
+          } else {
+            setHtml(`<p style="color:red;">❌ Audit failed: ${response.error}</p>`);
+          }
+        });
+      }
+    });
+  });
 });
