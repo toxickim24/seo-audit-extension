@@ -5,7 +5,7 @@
   "version": "1.0",
   "action": {
     "default_popup": "seo-extension.html",
-    "default_icon": "seo-logo.png"
+    "default_icon": "img/seo-logo.png"
   },
   "permissions": ["activeTab", "tabs", "scripting"],
   "host_permissions": ["https://www.googleapis.com/*"],
