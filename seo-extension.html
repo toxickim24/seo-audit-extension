@@ -1,19 +1,33 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <meta charset="UTF-8">
+  <meta charset="UTF-8" />
   <title>SEO Audit</title>
-  <link rel="stylesheet" href="css/seo-style.css">
-  <link rel="stylesheet" href="css/seo-speed.css">
+  <link rel="stylesheet" href="css/seo-style.css" />
+  <link rel="stylesheet" href="css/seo-speed.css" />
+
 </head>
 <body>
   <div class="header-box">
-    <h3>SEO Audit</h3>
-    <button id="scanBtn">Scan Current Page</button>
+    <img src="img/logo.png" alt="logo" />
+    <!-- Tab Button -->
+    <div class="navbar">
+      <button class="navlink active" data-target="overview">SEO On-Page</button>
+      <button class="navlink" data-target="speed">Website Speed</button>
+    </div>
   </div>
-  <div id="results" class="result-container"></div>
-  <div id="speed-results" class="speed-result-container"></div>
+
+  <!-- Tab Content -->
+  <div id="overview" class="navcontent active">
+    <div id="seo-results" class="result-container"></div>
+  </div>
+
+   <div id="speed" class="navcontent">
+    <div id="speed-results" class="speed-result-container"></div>
+  </div>
+
   <script src="js/seo-popup.js"></script>
   <script src="js/seo-speed.js"></script>
+  <script src="js/navbar-tab.js"></script>
 </body>
 </html>

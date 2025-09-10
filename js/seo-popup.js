@@ -1,4 +1,8 @@
-document.getElementById("scanBtn").addEventListener("click", async () => {
+document.addEventListener("DOMContentLoaded", async () => {
+  runSeoAudit();
+});
+
+async function runSeoAudit() {
   let [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
 
   chrome.scripting.executeScript(
@@ -7,15 +11,13 @@ document.getElementById("scanBtn").addEventListener("click", async () => {
       func: seoAudit,
     },
     (results) => {
+      if (!results || !results[0]) return;
       const data = results[0].result;
-      const resultsContainer = document.getElementById("results");
+      const resultsContainer = document.getElementById("seo-results");
 
-      document.getElementById("results").innerHTML = `
+      resultsContainer.innerHTML = `
         <div class="score-box">
-          <p><strong>SEO Score:</strong> ${data.score}/100</p>
-          ${data.issues.length > 0 
-            ? `<ul class="seo-mistake">${data.issues.map(i => `<li class="bad">${i}</li>`).join("")}</ul>` 
-            : `<p class="good">No major issues found</p>`}
+          <p><strong>SEO On-page Score:</strong> ${data.score}/100</p>
         </div>
 
         <div class="result-section">
@@ -49,27 +51,6 @@ document.getElementById("scanBtn").addEventListener("click", async () => {
         </div>
 
         <div class="result-section">
-          <h4>Headings</h4>
-          <p>H1: ${data.h1Count}</p>
-          <p>H2: ${data.h2Count}</p>
-          <p>H3: ${data.h3Count}</p>
-          <p>H4: ${data.h4Count}</p>
-          <p>H5: ${data.h5Count}</p>
-          <p>H6: ${data.h6Count}</p>
-        </div>
-
-        <div class="result-section">
-          <h4>Links</h4>
-          <p>Total: ${data.linkCount}</p>
-        </div>
-
-        <div class="result-section">
-          <h4>Images</h4>
-          <p>Total: ${data.imageCount}</p>
-          <p>Missing ALT: ${data.missingAlts}</p>
-        </div>
-
-        <div class="result-section">
           <h4>Schema Markup</h4>
           <p>JSON-LD: ${data.schema.jsonLd}</p>
           <p>Microdata: ${data.schema.microdata}</p>
@@ -93,12 +74,55 @@ document.getElementById("scanBtn").addEventListener("click", async () => {
           <p>Robots.txt: <a href="${data.robotsTxt}" target="_blank">${data.robotsTxt}</a></p>
           <p>Sitemap.xml: <a href="${data.sitemap}" target="_blank">${data.sitemap}</a></p>
         </div>
-      `;
 
-      resultsContainer.classList.add("show");
+        <div class="score-box">
+          ${data.issues.length > 0 
+          ? `<ul class="seo-mistake">${data.issues.map(i => `<li class="bad">${i}</li>`).join("")}</ul>` 
+          : `<p class="good">No major issues found</p>`}
+        </div>
+
+        <div class="result-section-heading">
+          <div class="left-content">
+            <div class="counter-box">
+              <h3>Links</h3>
+              <p>${data.linkCount}</p>
+            </div>
+            <div class="counter-box">
+              <h3>Images</h3>
+              <p>${data.imageCount}</p>
+            </div>
+          </div>
+          <div class="right-content">
+            <div class="counter-box">
+              <h3>H1</h3>
+              <p>${data.h1Count}</p>
+            </div>
+            <div class="counter-box">
+              <h3>H2</h3>
+              <p>${data.h2Count}</p>
+            </div>
+            <div class="counter-box">
+              <h3>H3</h3>
+              <p>${data.h3Count}</p>
+            </div>
+            <div class="counter-box">
+              <h3>H4</h3>
+              <p>${data.h4Count}</p>
+            </div>
+            <div class="counter-box">
+              <h3>H5</h3>
+              <p>${data.h5Count}</p>
+            </div>
+            <div class="counter-box">
+              <h3>H6</h3>
+              <p>${data.h6Count}</p>
+            </div>
+          </div>
+        </div>
+      `;
     }
   );
-});
+}
 
 function seoAudit() {
   let score = 100;
