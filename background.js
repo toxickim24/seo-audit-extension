@@ -1,15 +1,50 @@
 console.log("Background service worker loaded");
 
-// --- KEEPING YOUR OPR HANDLER ---
-chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-  if (message.type === "GET_DOMAIN_METRICS") {
-    const domain = message.domain;
-    fetch(`https://openpagerank.com/api/v1.0/getPageRank?domains[]=${domain}`, {
-      headers: { "API-OPR": "sgoccs888kwcows8ocsscgo8c4o0s44s4sg00c8o" }
+// --- Handle messages from popup ---
+chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+  if (request.action === "getPageRank") {
+    fetch(`https://openpagerank.com/api/v1.0/getPageRank?domains[]=${request.domain}`, {
+      headers: {
+        "API-OPR": "sgoccs888kwcows8ocsscgo8c4o0s44s4sg00c8o"
+      }
+    })
+      .then(async res => {
+        if (!res.ok) {
+          const text = await res.text();
+          throw new Error(`HTTP ${res.status}: ${text}`);
+        }
+        return res.json();
+      })
+      .then(data => {
+        console.log("✅ PageRank API response:", data);
+        sendResponse({ success: true, data });
+      })
+      .catch(err => {
+        console.error("❌ PageRank fetch failed:", err);
+        sendResponse({ success: false, error: err.message });
+      });
+
+    return true;
+  }
+
+  if (request.action === "getTraffic") {
+    fetch(`https://similar-web.p.rapidapi.com/similarweb/related-sites?domain=${request.domain}`, {
+      method: "GET",
+      headers: {
+        "X-RapidAPI-Key": "d5554e8c91msh769f84365df1e9ep10a8b1jsn37c25cfa4222",
+        "X-RapidAPI-Host": "similar-web.p.rapidapi.com"
+      }
     })
       .then(res => res.json())
-      .then(data => sendResponse({ success: true, data }))
-      .catch(err => sendResponse({ success: false, error: err.message }));
+      .then(data => {
+        console.log("SimilarWeb API response:", data);
+        sendResponse({ success: true, data });
+      })
+      .catch(err => {
+        console.error("SimilarWeb fetch failed:", err);
+        sendResponse({ success: false, error: err.toString() });
+      });
+
     return true;
   }
 });
