@@ -1,5 +1,3 @@
-// js/seo-leads.js — popup UI for captured leads
-
 const $leads = () => document.getElementById("leads-results");
 function setLeadsHtml(html){ if ($leads()) $leads().innerHTML = html; }
 const esc = s => String(s ?? "").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
@@ -60,11 +58,11 @@ function renderError(msg) {
   attachRefresh();
 }
 
-function renderLoading() {
+function renderLoading(customMsg="⏳ Scanning current page for leads…") {
   setLeadsHtml(`
     <div class="lead-card">
       <h4>Captured Lead</h4>
-      <p>⏳ Scanning current page for leads…</p>
+      <p>${esc(customMsg)}</p>
       <button id="refreshLeads" style="
         margin-top:8px;
         padding:6px 12px;
@@ -83,13 +81,9 @@ function attachRefresh() {
   const btn = document.getElementById("refreshLeads");
   if (btn) {
     btn.addEventListener("click", () => {
-      btn.disabled = true;
-      btn.textContent = "⏳ Refreshing…";
+      renderLoading("⏳ Refreshing…");
       chrome.runtime.sendMessage({ type: "RUN_LEAD_CAPTURE" }, () => {
-        loadLeadForCurrentSite().finally(() => {
-          btn.disabled = false;
-          btn.textContent = "🔄 Refresh Leads";
-        });
+        setTimeout(() => loadLeadForCurrentSite(), 1500);
       });
     });
   }
@@ -107,20 +101,33 @@ function loadLeadForCurrentSite() {
         try { const u=new URL(tabs[0].url); return `${u.protocol}//${u.hostname}`; } 
         catch { return tabs[0].url; } 
       })();
+
       chrome.storage.local.get("leads", (data) => {
         const leads = data.leads || {};
         if (leads[origin]) {
           renderLead(leads[origin]);
         } else {
-          renderError("No leads captured yet for this site.");
+          // trigger background capture if nothing yet
+          chrome.runtime.sendMessage({ type: "RUN_LEAD_CAPTURE" }, () => {
+            setTimeout(() => {
+              chrome.storage.local.get("leads", (retry) => {
+                const retryLeads = retry.leads || {};
+                if (retryLeads[origin]) {
+                  renderLead(retryLeads[origin], "✅ Captured on demand");
+                } else {
+                  renderError("❌ No leads captured yet for this site.");
+                }
+                resolve();
+              });
+            }, 1500);
+          });
         }
-        resolve();
       });
     });
   });
 }
 
-// 🚀 Show current site's lead on popup open
+// 🚀 On popup open
 document.addEventListener("DOMContentLoaded", () => {
   loadLeadForCurrentSite();
 });

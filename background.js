@@ -51,10 +51,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 
 
 // --- PAGESPEED SECTION ---
-const PSI_API_KEY = (() => {
-  try { return chrome.runtime.getManifest().google_speed_api; }
-  catch { return ""; }
-})();
+const PSI_API_KEY = "AIzaSyAZCIYhuH59SFasuRg9osspJIAz5K3IwyU"; // 🔑 replace with your actual API key
 
 function psiEndpoint(url, strategy = "desktop") {
   const base = "https://www.googleapis.com/pagespeedonline/v5/runPagespeed";
@@ -121,7 +118,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
 
 
-// --- LEAD CAPTURE HELPERS ---
+// --- HELPERS ---
 function getMainDomain(url) {
   try { const u = new URL(url); return `${u.protocol}//${u.hostname}`; }
   catch { return url; }
@@ -167,35 +164,25 @@ function mergeLead(oldLead, fresh) {
     instagram: fresh.instagram || oldLead.instagram || "",
     twitter: fresh.twitter || oldLead.twitter || "",
     linkedin: fresh.linkedin || oldLead.linkedin || "",
-    youtube: fresh.youtube || oldLead.youtube || "",
-    dateCaptured: oldLead.dateCaptured || new Date().toISOString().split("T")[0],
-    dateUpdated: new Date().toISOString().split("T")[0]
+    youtube: fresh.youtube || oldLead.youtube || ""
   };
 }
 
-// --- SCRAPING FUNCTION (injected into page) ---
+// --- SCRAPE FUNCTION (runs in page) ---
 function scrapePageLeadsInjected() {
   const out = {
-    emails: [],
-    phones: [],
-    facebook: [],
-    instagram: [],
-    twitter: [],
-    linkedin: [],
-    youtube: [],
-    addressText: "",
-    country: "",
-    city: "",
-    zip: "",
-    name: ""
+    emails: [], phones: [],
+    facebook: [], instagram: [], twitter: [], linkedin: [], youtube: [],
+    addressText: "", country: "", city: "", zip: "", name: ""
   };
 
-  // Emails & phones
+  // Emails
   const mailto = Array.from(document.querySelectorAll('a[href^="mailto:"]'))
     .map(a => (a.getAttribute("href") || "").replace(/^mailto:/i, "").split("?")[0].trim());
   const mailInText = (document.body.innerText || "").match(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-z]{2,}/gi) || [];
   out.emails = Array.from(new Set([...mailto, ...mailInText]));
 
+  // Phones
   const tel = Array.from(document.querySelectorAll('a[href^="tel:"]'))
     .map(a => (a.getAttribute("href") || "").replace(/^tel:/i, "").trim());
   const phoneText = (document.body.innerText || "").match(/(\+\d{1,3}[-.\s]?)?\(?\d{2,4}\)?[-.\s]?\d{3,4}[-.\s]?\d{3,6}/g) || [];
@@ -208,7 +195,7 @@ function scrapePageLeadsInjected() {
   out.linkedin = Array.from(document.querySelectorAll('a[href*="linkedin.com/"]')).map(a => a.href);
   out.youtube  = Array.from(document.querySelectorAll('a[href*="youtube.com/"], a[href*="youtu.be/"]')).map(a => a.href);
 
-  // Address: maps link text
+  // Address
   const mapsA = document.querySelector('a[href*="maps.google."], a[href*="google.com/maps"], a[href*="maps.app.goo.gl"], a[href*="g.page"]');
   if (mapsA) {
     const text = (mapsA.textContent || "").replace(/\s+/g, " ").trim();
@@ -217,8 +204,8 @@ function scrapePageLeadsInjected() {
     if (zipMatch) out.zip = zipMatch[0];
   }
 
-  // Name: use only <title>, clean suffixes
-  let rawTitle = document.querySelector('title')?.innerText || "";
+  // Name from <title>, cut suffix
+  let rawTitle = document.title || "";
   if (rawTitle.includes("–")) rawTitle = rawTitle.split("–")[0].trim();
   if (rawTitle.includes("|")) rawTitle = rawTitle.split("|")[0].trim();
   out.name = rawTitle;
@@ -226,11 +213,11 @@ function scrapePageLeadsInjected() {
   return out;
 }
 
-// --- Save merged lead ---
+// --- SAVE MERGED ---
 function saveMergedLead(origin, fresh) {
   chrome.storage.local.get("leads", (data) => {
     const leads = data.leads || {};
-    const old = leads[origin] || { website: origin, dateCaptured: new Date().toISOString().split("T")[0] };
+    const old = leads[origin] || { website: origin };
     const merged = mergeLead(old, fresh);
     leads[origin] = merged;
     chrome.storage.local.set({ leads }, () => {
@@ -239,7 +226,7 @@ function saveMergedLead(origin, fresh) {
   });
 }
 
-// --- Run capture on a tab ---
+// --- RUN CAPTURE ON TAB ---
 function runLeadCaptureOnTab(tabId, tabUrl) {
   const origin = getMainDomain(tabUrl);
   chrome.scripting.executeScript(
@@ -247,7 +234,6 @@ function runLeadCaptureOnTab(tabId, tabUrl) {
     (results) => {
       if (!results || !results[0]?.result) return;
       const r = results[0].result;
-
       const freshLead = {
         website: origin,
         name: (r.name || "").trim(),
@@ -263,20 +249,19 @@ function runLeadCaptureOnTab(tabId, tabUrl) {
         linkedin: filterSocial(r.linkedin)[0] || "",
         youtube: filterSocial(r.youtube)[0] || ""
       };
-
       saveMergedLead(origin, freshLead);
     }
   );
 }
 
-// Auto-capture on page load
+// --- AUTO CAPTURE ---
 chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
   if (changeInfo.status === "complete" && /^https?:/.test(tab.url)) {
-    runLeadCaptureOnTab(tabId, tab.url);
+    setTimeout(() => runLeadCaptureOnTab(tabId, tab.url), 1200);
   }
 });
 
-// Allow popup to force refresh
+// --- REFRESH CAPTURE ON DEMAND ---
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.type === "RUN_LEAD_CAPTURE") {
     chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
