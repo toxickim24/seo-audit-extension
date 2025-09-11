@@ -11,6 +11,5 @@
     "service_worker": "background.js"
   },
   "permissions": ["activeTab", "tabs", "scripting","storage"],
-  "host_permissions": ["https://www.googleapis.com/*"],
-  "google_speed_api": "AIzaSyAZCIYhuH59SFasuRg9osspJIAz5K3IwyU"
+  "host_permissions": ["https://www.googleapis.com/*"]
 }
