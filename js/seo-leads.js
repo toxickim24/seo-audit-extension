@@ -33,7 +33,7 @@ function renderLead(lead, statusMsg = "") {
   const l = normalizeLeadShape(lead);
   setLeadsHtml(`
     <div class="lead-card">
-      <h4>Captured Lead</h4>
+      <h4>Details</h4>
       ${statusMsg ? `<p style="color:#2563eb;">${esc(statusMsg)}</p>` : ""}
       <p><strong>Website:</strong> ${linkOrDash(l.website)}</p>
       <p><strong>Name:</strong> ${l.name || "-"}</p>
@@ -56,7 +56,7 @@ function renderLead(lead, statusMsg = "") {
         background:#059669;
         color:#fff;
         cursor:pointer;
-      ">🔄 Refresh Leads</button>
+      ">🔄 Refresh Data</button>
     </div>
   `);
   attachRefresh();
@@ -65,7 +65,7 @@ function renderLead(lead, statusMsg = "") {
 function renderError(msg) {
   setLeadsHtml(`
     <div class="lead-card">
-      <h4>Captured Lead</h4>
+      <h4>Captured Data</h4>
       <p style="color:red;">❌ ${esc(msg)}</p>
       <button id="refreshLeads" style="
         margin-top:8px;
@@ -75,16 +75,16 @@ function renderError(msg) {
         background:#059669;
         color:#fff;
         cursor:pointer;
-      ">🔄 Refresh Leads</button>
+      ">🔄 Refresh Data</button>
     </div>
   `);
   attachRefresh();
 }
 
-function renderLoading(customMsg="⏳ Scanning current page for leads…") {
+function renderLoading(customMsg="⏳ Scanning current page…") {
   setLeadsHtml(`
     <div class="lead-card">
-      <h4>Captured Lead</h4>
+      <h4>Captured Data</h4>
       <p>${esc(customMsg)}</p>
       <button id="refreshLeads" style="
         margin-top:8px;
@@ -94,7 +94,7 @@ function renderLoading(customMsg="⏳ Scanning current page for leads…") {
         background:#059669;
         color:#fff;
         cursor:pointer;
-      ">🔄 Refresh Leads</button>
+      ">🔄 Refresh Data</button>
     </div>
   `);
   attachRefresh();
@@ -139,7 +139,7 @@ function loadLeadForCurrentSite() {
                 if (retryLeads[origin]) {
                   renderLead(retryLeads[origin], "✅ Captured on demand");
                 } else {
-                  renderError("❌ No leads captured yet for this site.");
+                  renderError("No data captured yet for this site.");
                 }
                 resolve();
               });
