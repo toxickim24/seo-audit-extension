@@ -7,24 +7,47 @@ function linkOrDash(url) {
   return `<a href="${esc(url)}" target="_blank" rel="noopener">${esc(url)}</a>`;
 }
 
+// Normalize object keys for UI
+function normalizeLeadShape(lead) {
+  if (!lead) return null;
+  if (lead.website) return lead; // already camelCase
+  // convert from Sheet-style (if ever stored that way)
+  return {
+    website:  lead["Website"]   || "",
+    name:     lead["Name"] || "",
+    email:    lead["Email"]     || "",
+    phone:    lead["Phone"]     || "",
+    address:  lead["Address"]   || "",
+    country:  lead["Country"]   || "",
+    city:     lead["City"]      || "",
+    zip:      lead["Zip"]       || "",
+    facebook: lead["Facebook"]  || "",
+    instagram:lead["Instagram"] || "",
+    twitter:  lead["Twitter X"] || "",
+    linkedin: lead["LinkedIn"]  || "",
+    youtube:  lead["Youtube"]   || ""
+  };
+}
+
 function renderLead(lead, statusMsg = "") {
+  const l = normalizeLeadShape(lead);
   setLeadsHtml(`
     <div class="lead-card">
       <h4>Captured Lead</h4>
       ${statusMsg ? `<p style="color:#2563eb;">${esc(statusMsg)}</p>` : ""}
-      <p><strong>Website:</strong> ${linkOrDash(lead.website)}</p>
-      <p><strong>Name:</strong> ${lead.name || "-"}</p>
-      <p><strong>Email:</strong> ${lead.email ? `<a href="mailto:${esc(lead.email)}">${esc(lead.email)}</a>` : "-"}</p>
-      <p><strong>Phone:</strong> ${lead.phone ? `<a href="tel:${esc(lead.phone)}">${esc(lead.phone)}</a>` : "-"}</p>
-      <p><strong>Address:</strong> ${lead.address || "-"}</p>
-      <p><strong>Country:</strong> ${lead.country || "-"}</p>
-      <p><strong>City:</strong> ${lead.city || "-"}</p>
-      <p><strong>Zip:</strong> ${lead.zip || "-"}</p>
-      <p><strong>Facebook:</strong> ${linkOrDash(lead.facebook)}</p>
-      <p><strong>Instagram:</strong> ${linkOrDash(lead.instagram)}</p>
-      <p><strong>Twitter/X:</strong> ${linkOrDash(lead.twitter)}</p>
-      <p><strong>LinkedIn:</strong> ${linkOrDash(lead.linkedin)}</p>
-      <p><strong>Youtube:</strong> ${linkOrDash(lead.youtube)}</p>
+      <p><strong>Website:</strong> ${linkOrDash(l.website)}</p>
+      <p><strong>Name:</strong> ${l.name || "-"}</p>
+      <p><strong>Email:</strong> ${l.email ? `<a href="mailto:${esc(l.email)}">${esc(l.email)}</a>` : "-"}</p>
+      <p><strong>Phone:</strong> ${l.phone ? `<a href="tel:${esc(l.phone)}">${esc(l.phone)}</a>` : "-"}</p>
+      <p><strong>Address:</strong> ${l.address || "-"}</p>
+      <p><strong>Country:</strong> ${l.country || "-"}</p>
+      <p><strong>City:</strong> ${l.city || "-"}</p>
+      <p><strong>Zip:</strong> ${l.zip || "-"}</p>
+      <p><strong>Facebook:</strong> ${linkOrDash(l.facebook)}</p>
+      <p><strong>Instagram:</strong> ${linkOrDash(l.instagram)}</p>
+      <p><strong>Twitter/X:</strong> ${linkOrDash(l.twitter)}</p>
+      <p><strong>LinkedIn:</strong> ${linkOrDash(l.linkedin)}</p>
+      <p><strong>Youtube:</strong> ${linkOrDash(l.youtube)}</p>
       <button id="refreshLeads" style="
         margin-top:8px;
         padding:6px 12px;
@@ -93,7 +116,7 @@ function loadLeadForCurrentSite() {
   return new Promise((resolve) => {
     renderLoading();
     chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-      if (!tabs || !tabs[0]?.url) {
+      if (!tabs?.[0]?.url) {
         renderError("Could not detect active tab.");
         return resolve();
       }
@@ -104,8 +127,9 @@ function loadLeadForCurrentSite() {
 
       chrome.storage.local.get("leads", (data) => {
         const leads = data.leads || {};
-        if (leads[origin]) {
-          renderLead(leads[origin]);
+        const lead = leads[origin];
+        if (lead) {
+          renderLead(lead);
         } else {
           // trigger background capture if nothing yet
           chrome.runtime.sendMessage({ type: "RUN_LEAD_CAPTURE" }, () => {

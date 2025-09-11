@@ -118,29 +118,24 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
 
 
-// --- HELPERS ---
+// --- HELPERS (leads section) ---
 function getMainDomain(url) {
   try { const u = new URL(url); return `${u.protocol}//${u.hostname}`; }
   catch { return url; }
 }
-
 function uniq(arr) { return [...new Set((arr || []).filter(Boolean))]; }
-
 function filterSocial(hrefs) {
-  return uniq((hrefs || []).map(h => {
-    try { return new URL(h).href; } catch { return null; }
-  }));
+  return uniq((hrefs || []).map(h => { try { return new URL(h).href; } catch { return null; } }));
 }
-
 function pickBestEmail(emails, siteOrigin) {
-  if (!emails || emails.length === 0) return "";
+  if (!emails?.length) return "";
   let siteHost = "";
   try { siteHost = new URL(siteOrigin).hostname.replace(/^www\./, ""); } catch {}
   const ranked = emails
     .map(e => ({ e, host: e.split("@")[1]?.toLowerCase() || "" }))
     .sort((a, b) => {
-      const aCorp = !/gmail\.com|yahoo\.com|hotmail\.com|outlook\.com/i.test(a.host);
-      const bCorp = !/gmail\.com|yahoo\.com|hotmail\.com|outlook\.com/i.test(b.host);
+      const corp = h => !/gmail\.com|yahoo\.com|hotmail\.com|outlook\.com/i.test(h);
+      const aCorp = corp(a.host), bCorp = corp(b.host);
       const aMatch = siteHost && a.host.endsWith(siteHost);
       const bMatch = siteHost && b.host.endsWith(siteHost);
       if (aMatch !== bMatch) return bMatch - aMatch;
@@ -149,22 +144,39 @@ function pickBestEmail(emails, siteOrigin) {
     });
   return ranked[0]?.e || emails[0];
 }
-
-function mergeLead(oldLead, fresh) {
+function mergeLead(oldLead = {}, fresh = {}) {
+  // keep camelCase internally so seo-leads.js renders properly
   return {
-    ...oldLead,
-    name: fresh.name || oldLead.name || "",
-    email: fresh.email || oldLead.email || "",
-    phone: fresh.phone || oldLead.phone || "",
+    website: fresh.website || oldLead.website || "",
+    name:    fresh.name    || oldLead.name    || "",
+    email:   fresh.email   || oldLead.email   || "",
+    phone:   fresh.phone   || oldLead.phone   || "",
     address: fresh.address || oldLead.address || "",
     country: fresh.country || oldLead.country || "",
-    city: fresh.city || oldLead.city || "",
-    zip: fresh.zip || oldLead.zip || "",
-    facebook: fresh.facebook || oldLead.facebook || "",
+    city:    fresh.city    || oldLead.city    || "",
+    zip:     fresh.zip     || oldLead.zip     || "",
+    facebook:  fresh.facebook  || oldLead.facebook  || "",
     instagram: fresh.instagram || oldLead.instagram || "",
-    twitter: fresh.twitter || oldLead.twitter || "",
-    linkedin: fresh.linkedin || oldLead.linkedin || "",
-    youtube: fresh.youtube || oldLead.youtube || ""
+    twitter:   fresh.twitter   || oldLead.twitter   || "",
+    linkedin:  fresh.linkedin  || oldLead.linkedin  || "",
+    youtube:   fresh.youtube   || oldLead.youtube   || ""
+  };
+}
+function toSheetsPayload(lead) {
+  return {
+    "Website":   lead.website || "",
+    "Name": lead.name    || "",
+    "Email":     lead.email   || "",
+    "Phone":     lead.phone   || "",
+    "Address":   lead.address || "",
+    "Country":   lead.country || "",
+    "City":      lead.city    || "",
+    "Zip":       lead.zip     || "",
+    "Facebook":  lead.facebook  || "",
+    "Instagram": lead.instagram || "",
+    "Twitter X": lead.twitter   || "",
+    "LinkedIn":  lead.linkedin  || "",
+    "Youtube":   lead.youtube   || ""
   };
 }
 
@@ -175,27 +187,23 @@ function scrapePageLeadsInjected() {
     facebook: [], instagram: [], twitter: [], linkedin: [], youtube: [],
     addressText: "", country: "", city: "", zip: "", name: ""
   };
-
   // Emails
   const mailto = Array.from(document.querySelectorAll('a[href^="mailto:"]'))
     .map(a => (a.getAttribute("href") || "").replace(/^mailto:/i, "").split("?")[0].trim());
   const mailInText = (document.body.innerText || "").match(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-z]{2,}/gi) || [];
   out.emails = Array.from(new Set([...mailto, ...mailInText]));
-
   // Phones
   const tel = Array.from(document.querySelectorAll('a[href^="tel:"]'))
     .map(a => (a.getAttribute("href") || "").replace(/^tel:/i, "").trim());
   const phoneText = (document.body.innerText || "").match(/(\+\d{1,3}[-.\s]?)?\(?\d{2,4}\)?[-.\s]?\d{3,4}[-.\s]?\d{3,6}/g) || [];
   out.phones = Array.from(new Set([...tel, ...phoneText]));
-
   // Socials
   out.facebook = Array.from(document.querySelectorAll('a[href*="facebook.com/"]')).map(a => a.href);
   out.instagram = Array.from(document.querySelectorAll('a[href*="instagram.com/"]')).map(a => a.href);
   out.twitter  = Array.from(document.querySelectorAll('a[href*="twitter.com/"], a[href*="x.com/"]')).map(a => a.href);
   out.linkedin = Array.from(document.querySelectorAll('a[href*="linkedin.com/"]')).map(a => a.href);
   out.youtube  = Array.from(document.querySelectorAll('a[href*="youtube.com/"], a[href*="youtu.be/"]')).map(a => a.href);
-
-  // Address
+  // Address from Google Maps link if any
   const mapsA = document.querySelector('a[href*="maps.google."], a[href*="google.com/maps"], a[href*="maps.app.goo.gl"], a[href*="g.page"]');
   if (mapsA) {
     const text = (mapsA.textContent || "").replace(/\s+/g, " ").trim();
@@ -203,8 +211,7 @@ function scrapePageLeadsInjected() {
     const zipMatch = text.match(/\b\d{4,6}\b/);
     if (zipMatch) out.zip = zipMatch[0];
   }
-
-  // Name from <title>, cut suffix
+  // Name from <title>
   let rawTitle = document.title || "";
   if (rawTitle.includes("–")) rawTitle = rawTitle.split("–")[0].trim();
   if (rawTitle.includes("|")) rawTitle = rawTitle.split("|")[0].trim();
@@ -213,22 +220,46 @@ function scrapePageLeadsInjected() {
   return out;
 }
 
-// --- SAVE MERGED ---
+// --- SAVE MERGED + SYNC TO SHEET ---
+const GOOGLE_SHEET_WEBAPP = "https://script.google.com/macros/s/AKfycbyXpGE5arGyyr44mnt13Enu1IxK6Gi1uAH_FX4DjYVXwPuXl4xkMX3ehKu8wd8HsKNKyQ/exec"; // 🔗 paste your deployed web app URL
+
 function saveMergedLead(origin, fresh) {
   chrome.storage.local.get("leads", (data) => {
     const leads = data.leads || {};
     const old = leads[origin] || { website: origin };
     const merged = mergeLead(old, fresh);
+
     leads[origin] = merged;
     chrome.storage.local.set({ leads }, () => {
       console.log("✅ Lead captured for", origin, merged);
+
+      if (!GOOGLE_SHEET_WEBAPP.startsWith("http")) return;
+
+      fetch(GOOGLE_SHEET_WEBAPP, {
+        method: "POST",
+        body: JSON.stringify(toSheetsPayload(merged)),
+        headers: { "Content-Type": "application/json" }
+      })
+      .then(res => res.json())
+      .then(resp => console.log("📤 Synced with Google Sheets:", resp))
+      .catch(err => console.error("❌ Google Sheets error:", err));
     });
   });
 }
 
 // --- RUN CAPTURE ON TAB ---
-function runLeadCaptureOnTab(tabId, tabUrl) {
+function runLeadCaptureOnTab(tabId, tabUrl, { force = false } = {}) {
   const origin = getMainDomain(tabUrl);
+
+  // Rule: skip auto on innerpages
+  try {
+    const u = new URL(tabUrl);
+    if (!force && u.pathname !== "/" && u.pathname !== "/index.html" && u.pathname !== "") {
+      console.log("ℹ️ Skipping innerpage:", tabUrl);
+      return;
+    }
+  } catch {}
+
   chrome.scripting.executeScript(
     { target: { tabId }, func: scrapePageLeadsInjected },
     (results) => {
@@ -257,7 +288,7 @@ function runLeadCaptureOnTab(tabId, tabUrl) {
 // --- AUTO CAPTURE ---
 chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
   if (changeInfo.status === "complete" && /^https?:/.test(tab.url)) {
-    setTimeout(() => runLeadCaptureOnTab(tabId, tab.url), 1200);
+    setTimeout(() => runLeadCaptureOnTab(tabId, tab.url, { force: false }), 1200);
   }
 });
 
@@ -265,11 +296,11 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.type === "RUN_LEAD_CAPTURE") {
     chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-      if (!tabs || !tabs[0]?.id || !tabs[0]?.url) {
+      if (!tabs?.[0]?.id || !tabs[0]?.url) {
         sendResponse({ success: false, error: "No active tab" });
         return;
       }
-      runLeadCaptureOnTab(tabs[0].id, tabs[0].url);
+      runLeadCaptureOnTab(tabs[0].id, tabs[0].url, { force: true });
       sendResponse({ success: true });
     });
     return true;

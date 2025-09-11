@@ -11,7 +11,11 @@
     "service_worker": "background.js"
   },
   "permissions": ["activeTab", "tabs", "scripting","storage", "https://openpagerank.com/*"],
-  "host_permissions": ["https://www.googleapis.com/*", "https://openpagerank.com/*", "https://*.rapidapi.com/*"],
-  "google_speed_api": "AIzaSyAZCIYhuH59SFasuRg9osspJIAz5K3IwyU"
-
+  "host_permissions": [
+    "https://www.googleapis.com/*",
+    "https://openpagerank.com/*",
+    "https://*.rapidapi.com/*",
+    "https://script.google.com/macros/s/AKfycbz1XeZimfYcm3eMNgO8E9fu8gjqktvxkRuVDzYbQooYyPCKCOF718SXEe8_awVzObgBKw/exec",
+    "https://script.googleusercontent.com/*"
+  ]
 }
