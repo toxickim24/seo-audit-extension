@@ -10,7 +10,7 @@
    "background": {
     "service_worker": "background.js"
   },
-  "permissions": ["activeTab", "tabs", "scripting","storage", "https://openpagerank.com/*"],
+  "permissions": ["activeTab", "tabs", "scripting","storage"],
   "host_permissions": [
     "https://www.googleapis.com/*",
     "https://openpagerank.com/*",
