@@ -1,137 +1,186 @@
 document.addEventListener("DOMContentLoaded", async () => {
   runSeoAudit();
+
+  // 🔥 Get active tab and domain
+  let [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+  let domain = new URL(tab.url).hostname;
+
 });
 
 async function runSeoAudit() {
   let [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+  const domain = new URL(tab.url).hostname;
 
-  chrome.scripting.executeScript(
-    {
-      target: { tabId: tab.id },
-      func: seoAudit,
-    },
-    (results) => {
-      if (!results || !results[0]) return;
-      const data = results[0].result;
-      const resultsContainer = document.getElementById("seo-results");
+  // Fetch PageRank
+  chrome.runtime.sendMessage(
+    { action: "getPageRank", domain },
+    (rankResponse) => {
+      chrome.scripting.executeScript(
+        {
+          target: { tabId: tab.id },
+          func: seoAudit,
+        },
+        (results) => {
+          if (!results || !results[0]) return;
+          const data = results[0].result;
+          const resultsContainer = document.getElementById("seo-results");
 
-      resultsContainer.innerHTML = `
-        <div class="score-box">
-          <p><strong>SEO On-page Score:</strong> ${data.score}/100</p>
-        </div>
+          // Build PageRank box
+          let pageRankHtml = "";
+          if (rankResponse && rankResponse.success) {
+            const rankData = rankResponse.data.response[0];
+            pageRankHtml = `
+              <div class="score-box" id="page-rank-box">
+                <p><strong>PageRank:</strong> ${rankData.page_rank_decimal}</p>
+              </div>
+            `;
+          } else {
+            pageRankHtml = `
+              <div class="score-box" id="page-rank-box">
+                <p><strong>PageRank:</strong> Error fetching</p>
+              </div>
+            `;
+          }
 
-        <div class="result-section">
-          <h4>Current URL</h4>
-          <p>${data.url}</p>
-        </div>
+          // Insert PageRank box and the rest of SEO audit
+          resultsContainer.innerHTML = `
+            ${pageRankHtml}
 
-        <div class="result-section">
-          <h4>Title</h4>
-          <p>${data.title ? data.title : "Missing"}</p>
-          <p>Length: ${data.titleLength} characters</p>
-        </div>
-
-        <div class="result-section">
-          <h4>Description</h4>
-          <p>${data.metaDesc ? data.metaDesc : "Missing"}</p>
-          <p>Length: ${data.metaDescLength} characters</p>
-        </div>
-
-        <div class="result-section">
-          <h4>Canonical</h4>
-          <p>${data.canonical 
-              ? `<a href="${data.canonical}" target="_blank">${data.canonical}</a>` 
-              : "No canonical tag found"}</p>
-        </div>
-
-        <div class="result-section">
-          <h4>Meta Robots</h4>
-          <p>${data.indexable ? "Indexable" : "Noindex"}</p>
-          <p>${data.metaRobots}</p>
-        </div>
-
-        <div class="result-section">
-          <h4>Schema Markup</h4>
-          <p>JSON-LD: ${data.schema.jsonLd}</p>
-          <p>Microdata: ${data.schema.microdata}</p>
-          <p>RDFa: ${data.schema.rdfa}</p>
-        </div>
-
-        <div class="result-section">
-          <h4>Social Tags</h4>
-          <p>Open Graph: ${data.openGraph ? "Found" : "Missing"}</p>
-        </div>
-
-        <div class="result-section">
-          <h4>Other On-page Checks</h4>
-          <p>Favicon: ${data.favicon ? "Found" : "Missing"}</p>
-          <p>Viewport: ${data.viewport ? "Found" : "Missing"}</p>
-          <p>Language Attribute: ${data.langAttr ? data.langAttr : "Missing"}</p>
-        </div>
-
-        <div class="result-section">
-          <h4>Files</h4>
-          <p>Robots.txt: <a href="${data.robotsTxt}" target="_blank">${data.robotsTxt}</a></p>
-          <p>Sitemap.xml: <a href="${data.sitemap}" target="_blank">${data.sitemap}</a></p>
-        </div>
-
-        <div class="score-box">
-          ${data.issues.length > 0 
-          ? `<ul class="seo-mistake">${data.issues.map(i => `<li class="bad">${i}</li>`).join("")}</ul>` 
-          : `<p class="good">No major issues found</p>`}
-        </div>
-
-        <div class="result-section-heading">
-          <div class="left-content">
-            <div class="counter-box">
-              <h3>Links</h3>
-              <p>${data.linkCount}</p>
+            <div id="similarweb-traffic-box" class="score-box">
+              <p><strong>Traffic:</strong> Loading...</p>
             </div>
-            <div class="counter-box">
-              <h3>Images</h3>
-              <p>${data.imageCount}</p>
+
+            <div class="score-box">
+              <p><strong>SEO On-page Score:</strong> ${data.score}/100</p>
             </div>
-          </div>
-          <div class="right-content">
-            <div class="counter-box">
-              <h3>H1</h3>
-              <p>${data.h1Count}</p>
+
+            <div class="result-section">
+              <h4>Current URL</h4>
+              <p>${data.url}</p>
             </div>
-            <div class="counter-box">
-              <h3>H2</h3>
-              <p>${data.h2Count}</p>
+
+            <div class="result-section">
+              <h4>Title</h4>
+              <p>${data.title ? data.title : "Missing"}</p>
+              <p>Length: ${data.titleLength} characters</p>
             </div>
-            <div class="counter-box">
-              <h3>H3</h3>
-              <p>${data.h3Count}</p>
+
+            <div class="result-section">
+              <h4>Description</h4>
+              <p>${data.metaDesc ? data.metaDesc : "Missing"}</p>
+              <p>Length: ${data.metaDescLength} characters</p>
             </div>
-            <div class="counter-box">
-              <h3>H4</h3>
-              <p>${data.h4Count}</p>
+
+            <div class="result-section">
+              <h4>Canonical</h4>
+              <p>${data.canonical 
+                  ? `<a href="${data.canonical}" target="_blank">${data.canonical}</a>` 
+                  : "No canonical tag found"}</p>
             </div>
-            <div class="counter-box">
-              <h3>H5</h3>
-              <p>${data.h5Count}</p>
+
+            <div class="result-section">
+              <h4>Meta Robots</h4>
+              <p>${data.indexable ? "Indexable" : "Noindex"}</p>
+              <p>${data.metaRobots}</p>
             </div>
-            <div class="counter-box">
-              <h3>H6</h3>
-              <p>${data.h6Count}</p>
+
+            <div class="result-section">
+              <h4>Schema Markup</h4>
+              <p>JSON-LD: ${data.schema.jsonLd}</p>
+              <p>Microdata: ${data.schema.microdata}</p>
+              <p>RDFa: ${data.schema.rdfa}</p>
             </div>
-          </div>
-        </div>
-      `;
+
+            <div class="result-section">
+              <h4>Social Tags</h4>
+              <p>Open Graph: ${data.openGraph ? "Found" : "Missing"}</p>
+            </div>
+
+            <div class="result-section">
+              <h4>Other On-page Checks</h4>
+              <p>Favicon: ${data.favicon ? "Found" : "Missing"}</p>
+              <p>Viewport: ${data.viewport ? "Found" : "Missing"}</p>
+              <p>Language Attribute: ${data.langAttr ? data.langAttr : "Missing"}</p>
+            </div>
+
+            <div class="result-section">
+              <h4>Files</h4>
+              <p>Robots.txt: <a href="${data.robotsTxt}" target="_blank">${data.robotsTxt}</a></p>
+              <p>Sitemap.xml: <a href="${data.sitemap}" target="_blank">${data.sitemap}</a></p>
+            </div>
+
+            <div class="score-box">
+              ${data.issues.length > 0 
+              ? `<ul class="seo-mistake">${data.issues.map(i => `<li class="bad">${i}</li>`).join("")}</ul>` 
+              : `<p class="good">No major issues found</p>`}
+            </div>
+
+            <div class="result-section-heading">
+              <div class="left-content">
+                <div class="counter-box">
+                  <h3>Links</h3>
+                  <p>${data.linkCount}</p>
+                </div>
+                <div class="counter-box">
+                  <h3>Images</h3>
+                  <p>${data.imageCount}</p>
+                </div>
+              </div>
+              <div class="right-content">
+                <div class="counter-box">
+                  <h3>H1</h3>
+                  <p>${data.h1Count}</p>
+                </div>
+                <div class="counter-box">
+                  <h3>H2</h3>
+                  <p>${data.h2Count}</p>
+                </div>
+                <div class="counter-box">
+                  <h3>H3</h3>
+                  <p>${data.h3Count}</p>
+                </div>
+                <div class="counter-box">
+                  <h3>H4</h3>
+                  <p>${data.h4Count}</p>
+                </div>
+                <div class="counter-box">
+                  <h3>H5</h3>
+                  <p>${data.h5Count}</p>
+                </div>
+                <div class="counter-box">
+                  <h3>H6</h3>
+                  <p>${data.h6Count}</p>
+                </div>
+              </div>
+            </div>
+          `;
+        }
+      );
     }
   );
+}
+
+// Function to update SimilarWeb traffic in the UI
+function displayTraffic(trafficData, tabId) {
+  const trafficBox = document.getElementById("similarweb-traffic-box");
+  if (!trafficBox) return;
+
+  // Example: you can show visits or global rank
+  const visits = trafficData.visits || "N/A";
+  const globalRank = trafficData.globalRank || "N/A";
+
+  trafficBox.innerHTML = `
+    <p><strong>Traffic:</strong></p>
+    <p>Monthly Visits: ${visits}</p>
+    <p>Global Rank: ${globalRank}</p>
+  `;
 }
 
 function seoAudit() {
   let score = 100;
   let issues = [];
 
-  // Current URL
   const url = location.href;
-
-  // Title Check
   const title = document.querySelector("title")?.textContent || "";
   const titleLength = title.length;
   if (!title || titleLength < 10 || titleLength > 60) {
@@ -139,7 +188,6 @@ function seoAudit() {
     issues.push("Title is missing, too short, or too long.");
   }
 
-  // Meta Description Check
   const metaDesc = document.querySelector("meta[name='description']")?.content || "";
   const metaDescLength = metaDesc.length;
   if (!metaDesc || metaDescLength < 50 || metaDescLength > 160) {
@@ -147,18 +195,15 @@ function seoAudit() {
     issues.push("Meta description missing, too short, or too long.");
   }
 
-  // Canonical Check
   const canonical = document.querySelector("link[rel='canonical']")?.href || "";
   if (!canonical) {
     score -= 5;
     issues.push("No canonical tag found.");
   }
 
-  // Meta Robots
   const metaRobots = document.querySelector("meta[name='robots']")?.content || "index,follow";
   const indexable = !/noindex/i.test(metaRobots);
 
-  // Headings Check
   const h1s = document.querySelectorAll("h1");
   const h2s = document.querySelectorAll("h2");
   const h3s = document.querySelectorAll("h3");
@@ -174,7 +219,6 @@ function seoAudit() {
     issues.push("Multiple H1 tags found.");
   }
 
-  // Images Check
   const images = document.querySelectorAll("img");
   const missingAlts = [...images].filter(img => !img.alt).length;
   if (missingAlts > 0) {
@@ -182,7 +226,6 @@ function seoAudit() {
     issues.push(`${missingAlts} image(s) missing alt attributes.`);
   }
 
-  // Links Check
   const links = [...document.querySelectorAll("a[href]")];
   const brokenLinks = links.filter(link => !link.href || link.href === "#");
   if (brokenLinks.length > 0) {
@@ -190,7 +233,6 @@ function seoAudit() {
     issues.push(`${brokenLinks.length} broken link(s) found.`);
   }
 
-  // Schema Check
   const jsonLd = document.querySelectorAll("script[type='application/ld+json']").length;
   const microdata = document.querySelectorAll("[itemscope]").length;
   const rdfa = document.querySelectorAll("[typeof]").length;
@@ -199,35 +241,30 @@ function seoAudit() {
     issues.push("No schema markup found.");
   }
 
-  // Open Graph Check
   const openGraph = document.querySelector("meta[property^='og:']") ? true : false;
   if (!openGraph) {
     score -= 3;
     issues.push("Open Graph tags missing.");
   }
 
-  // Favicon Check
   const favicon = document.querySelector("link[rel*='icon']")?.href || "";
   if (!favicon) {
     score -= 2;
     issues.push("Favicon missing.");
   }
 
-  // Responsive Check
   const viewport = document.querySelector("meta[name='viewport']")?.content || "";
   if (!viewport) {
     score -= 2;
     issues.push("Viewport meta tag missing.");
   }
 
-  // HTML lang attribute
   const langAttr = document.documentElement.getAttribute("lang") || "";
   if (!langAttr) {
     score -= 2;
     issues.push("Missing HTML attribute.");
   }
 
-  // Robots & Sitemap
   const robotsTxt = location.origin + "/robots.txt";
   const sitemap = location.origin + "/sitemap.xml";
 
