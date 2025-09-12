@@ -13,6 +13,8 @@
   "permissions": ["downloads","activeTab","tabs","scripting","storage"],
   "host_permissions": [
     "*://*/*",
+    "http://*/*",
+    "https://*/*",
     "https://www.googleapis.com/*",
     "https://openpagerank.com/*",
     "https://*.rapidapi.com/*",
