@@ -1,10 +1,11 @@
+let latestSeoData = null; // 🔥 store audit results for download-pdf.js
+
 document.addEventListener("DOMContentLoaded", async () => {
   runSeoAudit();
 
   // 🔥 Get active tab and domain
   let [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
   let domain = new URL(tab.url).hostname;
-
 });
 
 async function runSeoAudit() {
@@ -24,6 +25,9 @@ async function runSeoAudit() {
           if (!results || !results[0]) return;
           const data = results[0].result;
           const resultsContainer = document.getElementById("seo-results");
+
+          // 🔥 Save SEO data for PDF later
+          latestSeoData = data;
 
           // Build PageRank box
           let pageRankHtml = "";
@@ -45,10 +49,6 @@ async function runSeoAudit() {
           // Insert PageRank box and the rest of SEO audit
           resultsContainer.innerHTML = `
             ${pageRankHtml}
-
-            <div id="similarweb-traffic-box" class="score-box">
-              <p><strong>Traffic:</strong> Loading...</p>
-            </div>
 
             <div class="score-box">
               <p><strong>SEO On-page Score:</strong> ${data.score}/100</p>
@@ -73,9 +73,11 @@ async function runSeoAudit() {
 
             <div class="result-section">
               <h4>Canonical</h4>
-              <p>${data.canonical 
-                  ? `<a href="${data.canonical}" target="_blank">${data.canonical}</a>` 
-                  : "No canonical tag found"}</p>
+              <p>${
+                data.canonical
+                  ? `<a href="${data.canonical}" target="_blank">${data.canonical}</a>`
+                  : "No canonical tag found"
+              }</p>
             </div>
 
             <div class="result-section">
@@ -100,19 +102,29 @@ async function runSeoAudit() {
               <h4>Other On-page Checks</h4>
               <p>Favicon: ${data.favicon ? "Found" : "Missing"}</p>
               <p>Viewport: ${data.viewport ? "Found" : "Missing"}</p>
-              <p>Language Attribute: ${data.langAttr ? data.langAttr : "Missing"}</p>
+              <p>Language Attribute: ${
+                data.langAttr ? data.langAttr : "Missing"
+              }</p>
             </div>
 
             <div class="result-section">
               <h4>Files</h4>
-              <p>Robots.txt: <a href="${data.robotsTxt}" target="_blank">${data.robotsTxt}</a></p>
-              <p>Sitemap.xml: <a href="${data.sitemap}" target="_blank">${data.sitemap}</a></p>
+              <p>Robots.txt: <a href="${data.robotsTxt}" target="_blank">${
+            data.robotsTxt
+          }</a></p>
+              <p>Sitemap.xml: <a href="${data.sitemap}" target="_blank">${
+            data.sitemap
+          }</a></p>
             </div>
 
             <div class="score-box">
-              ${data.issues.length > 0 
-              ? `<ul class="seo-mistake">${data.issues.map(i => `<li class="bad">${i}</li>`).join("")}</ul>` 
-              : `<p class="good">No major issues found</p>`}
+              ${
+                data.issues.length > 0
+                  ? `<ul class="seo-mistake">${data.issues
+                      .map((i) => `<li class="bad">${i}</li>`)
+                      .join("")}</ul>`
+                  : `<p class="good">No major issues found</p>`
+              }
             </div>
 
             <div class="result-section-heading">
@@ -188,7 +200,8 @@ function seoAudit() {
     issues.push("Title is missing, too short, or too long.");
   }
 
-  const metaDesc = document.querySelector("meta[name='description']")?.content || "";
+  const metaDesc =
+    document.querySelector("meta[name='description']")?.content || "";
   const metaDescLength = metaDesc.length;
   if (!metaDesc || metaDescLength < 50 || metaDescLength > 160) {
     score -= 10;
@@ -201,7 +214,8 @@ function seoAudit() {
     issues.push("No canonical tag found.");
   }
 
-  const metaRobots = document.querySelector("meta[name='robots']")?.content || "index,follow";
+  const metaRobots =
+    document.querySelector("meta[name='robots']")?.content || "index,follow";
   const indexable = !/noindex/i.test(metaRobots);
 
   const h1s = document.querySelectorAll("h1");
@@ -220,20 +234,22 @@ function seoAudit() {
   }
 
   const images = document.querySelectorAll("img");
-  const missingAlts = [...images].filter(img => !img.alt).length;
+  const missingAlts = [...images].filter((img) => !img.alt).length;
   if (missingAlts > 0) {
     score -= 5;
     issues.push(`${missingAlts} image(s) missing alt attributes.`);
   }
 
   const links = [...document.querySelectorAll("a[href]")];
-  const brokenLinks = links.filter(link => !link.href || link.href === "#");
+  const brokenLinks = links.filter((link) => !link.href || link.href === "#");
   if (brokenLinks.length > 0) {
     score -= 5;
     issues.push(`${brokenLinks.length} broken link(s) found.`);
   }
 
-  const jsonLd = document.querySelectorAll("script[type='application/ld+json']").length;
+  const jsonLd = document.querySelectorAll(
+    "script[type='application/ld+json']"
+  ).length;
   const microdata = document.querySelectorAll("[itemscope]").length;
   const rdfa = document.querySelectorAll("[typeof]").length;
   if (jsonLd === 0 && microdata === 0 && rdfa === 0) {
@@ -241,7 +257,9 @@ function seoAudit() {
     issues.push("No schema markup found.");
   }
 
-  const openGraph = document.querySelector("meta[property^='og:']") ? true : false;
+  const openGraph = document.querySelector("meta[property^='og:']")
+    ? true
+    : false;
   if (!openGraph) {
     score -= 3;
     issues.push("Open Graph tags missing.");
@@ -253,7 +271,8 @@ function seoAudit() {
     issues.push("Favicon missing.");
   }
 
-  const viewport = document.querySelector("meta[name='viewport']")?.content || "";
+  const viewport =
+    document.querySelector("meta[name='viewport']")?.content || "";
   if (!viewport) {
     score -= 2;
     issues.push("Viewport meta tag missing.");
@@ -294,6 +313,6 @@ function seoAudit() {
     openGraph,
     favicon,
     viewport,
-    langAttr
+    langAttr,
   };
 }

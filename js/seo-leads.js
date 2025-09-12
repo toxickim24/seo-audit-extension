@@ -31,6 +31,18 @@ function normalizeLeadShape(lead) {
 
 function renderLead(lead, statusMsg = "") {
   const l = normalizeLeadShape(lead);
+
+  // 🔹 Save normalized lead for PDF use
+  const origin = (() => { 
+    try { const u=new URL(l.website); return `${u.protocol}//${u.hostname}`; } 
+    catch { return l.website; } 
+  })();
+  chrome.storage.local.get("leads", (data) => {
+    const leads = data.leads || {};
+    leads[origin] = l; // overwrite with normalized data
+    chrome.storage.local.set({ leads });
+  });
+
   setLeadsHtml(`
     <div class="lead-card">
       <h4>Details</h4>
