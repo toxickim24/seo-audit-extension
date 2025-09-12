@@ -7,11 +7,12 @@
     "default_popup": "seo-extension.html",
     "default_icon": "img/seo-logo.png"
   },
-   "background": {
+  "background": {
     "service_worker": "background.js"
   },
-  "permissions": ["activeTab", "tabs", "scripting","storage"],
+  "permissions": ["downloads","activeTab","tabs","scripting","storage"],
   "host_permissions": [
+    "*://*/*",
     "http://*/*",
     "https://*/*",
     "https://www.googleapis.com/*",
@@ -19,5 +20,11 @@
     "https://*.rapidapi.com/*",
     "https://script.google.com/macros/s/AKfycbz1XeZimfYcm3eMNgO8E9fu8gjqktvxkRuVDzYbQooYyPCKCOF718SXEe8_awVzObgBKw/exec",
     "https://script.googleusercontent.com/*"
-  ]
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": ["libs/html2pdf.bundle.min.js"],
+      "matches": ["<all_urls>"]
+    }
+]
 }
